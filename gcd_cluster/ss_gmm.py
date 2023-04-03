@@ -51,7 +51,11 @@ class DeepSSGMM(GaussianMixture):
         means_init = ss_kmeans_plusplus(
             X_labeled, y_labeled, X_unlabeled, n_components - len(np.unique(y_labeled)))
         super().__init__(n_components, covariance_type="spherical", means_init=means_init)
-        self._initialize_parameters(X_unlabeled, np.random.mtrand._rand)
+        # initialize with equal responsibility for each initial cluster for unlabeled data
+        X = np.vstack((X_labeled, X_unlabeled))
+        resp = np.vstack((targets_to_resp(y_labeled, n_components),
+                          np.full((X_unlabeled.shape[0], n_components), 1 / n_components)))
+        self._initialize(X, resp)
         # force spherical covariance used by model
         self.set_covariance(covariance)
 
