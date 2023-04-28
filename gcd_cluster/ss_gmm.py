@@ -63,11 +63,23 @@ class DeepSSGMM(GaussianMixture):
         log_prob_norm, log_resp = self._estimate_log_prob_resp(X_unlabeled)
         return np.exp(log_resp)
 
-    def deep_m_step(self, X_labeled, y_labeled, X_unlabeled, resp_unlabeled, covariance: float):
+    def deep_m_step(self, X_labeled, y_labeled, X_unlabeled, resp_unlabeled, preds,
+                    covariance: float):
         # calculate and concat inputs
         resp_labeled = targets_to_resp(y_labeled, self.n_components)
         X = np.vstack((X_labeled, X_unlabeled))
         resp = np.vstack((resp_labeled, resp_unlabeled))
+        # find clusters unused by classifer (preds is from labeled and unlabeled data)
+        clusters = np.arange(self.n_components)
+        unused_clusters = clusters[~np.isin(clusters, np.hstack((y_labeled, preds)))]
+        # reinitialize unused clusters to least probable points in unlabeled set
+        for unused_cluster in unused_clusters:
+            least_pt = np.argmin(self._estimate_log_prob_resp(X_unlabeled)[0])
+            self.means_[unused_cluster] = X_unlabeled[least_pt]
+            # make cluster responsible for point and eliminate outdated responsibility
+            resp[len(resp_labeled) + least_pt] = 0
+            resp[:, unused_cluster] = 0
+            resp[len(resp_labeled) + least_pt, unused_cluster] = 1
         # update mixing weights and means, fixing covarinace before and after
         self.set_covariance(covariance)
         self.weights_, self.means_, self.covariances_ = gm._estimate_gaussian_parameters(

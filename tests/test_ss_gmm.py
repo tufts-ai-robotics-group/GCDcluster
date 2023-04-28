@@ -58,7 +58,8 @@ def test_deep_ss_gmm():
     for _ in range(ss_est.max_iter):
         print(ss_est.means_)
         resp_unlabeled = ss_est.deep_e_step(X_unlabeled)
-        ss_est.deep_m_step(X_labeled, y_labeled, X_unlabeled, resp_unlabeled, covariance)
+        # y_true being used for preds since it has to have all clusters in it to prevent reinit
+        ss_est.deep_m_step(X_labeled, y_labeled, X_unlabeled, resp_unlabeled, y_true, covariance)
     y_pred = ss_est.predict(np.vstack((X_labeled, X_unlabeled)))
     row_ind, col_ind, weight = stats.assign_clusters(y_pred, y_true)
     acc = stats.cluster_acc(row_ind, col_ind, weight)
